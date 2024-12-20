@@ -1,0 +1,5 @@
+spotipy
+wifi
+pillow
+qrcode
+flask
