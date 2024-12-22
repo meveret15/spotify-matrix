@@ -1,0 +1,14 @@
+[Unit]
+Description=Spotlight Setup Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/mever/spotify-matrix
+ExecStart=/usr/bin/python3 /home/mever/spotify-matrix/setup.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target 

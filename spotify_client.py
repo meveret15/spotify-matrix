@@ -1,80 +1,98 @@
 import os
-from config import SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, REDIRECT_URI
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import time
+from platformdirs import user_config_dir
+import subprocess
+from utils.logger import setup_logger
+from config import SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, REDIRECT_URI
+
+logger = setup_logger('spotify', 'spotify.log')
 
 class SpotifyClient:
     def __init__(self):
-        # Create cache directory in the project folder
-        cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
-        if not os.path.exists(cache_dir):
-            try:
-                os.makedirs(cache_dir)
-            except:
-                # If we can't create the directory, use /tmp
-                cache_dir = '/tmp'
+        logger.info("Initializing SpotifyClient")
+        self.config_dir = user_config_dir("spotlight", "mever")
+        self.cache_path = os.path.join(self.config_dir, '.spotify_cache')
         
-        cache_path = os.path.join(cache_dir, '.spotify_cache')
-
-        os.environ['SPOTIPY_CLIENT_ID'] = SPOTIPY_CLIENT_ID
-        os.environ['SPOTIPY_CLIENT_SECRET'] = SPOTIPY_CLIENT_SECRET
-        os.environ['SPOTIPY_REDIRECT_URI'] = REDIRECT_URI
-
+        try:
+            # Get the actual mever user's UID and GID
+            mever_uid = int(subprocess.check_output(['id', '-u', 'mever']).decode().strip())
+            mever_gid = int(subprocess.check_output(['id', '-g', 'mever']).decode().strip())
+            
+            # Create config directory if it doesn't exist
+            os.makedirs(self.config_dir, mode=0o755, exist_ok=True)
+            os.chown(self.config_dir, mever_uid, mever_gid)
+            
+            if os.path.exists(self.cache_path):
+                os.chown(self.cache_path, mever_uid, mever_gid)
+                os.chmod(self.cache_path, 0o600)
+                
+        except Exception as e:
+            logger.error(f"Config directory setup failed: {str(e)}")
+            self.config_dir = '/tmp'
+            self.cache_path = os.path.join(self.config_dir, '.spotify_cache')
+        
+        logger.info(f"Using config directory: {self.config_dir}")
+        logger.info(f"Using cache path: {self.cache_path}")
+        
         self.auth_manager = SpotifyOAuth(
             client_id=SPOTIPY_CLIENT_ID,
             client_secret=SPOTIPY_CLIENT_SECRET,
             redirect_uri=REDIRECT_URI,
-            scope="user-read-currently-playing",
+            scope="user-read-currently-playing user-read-playback-state",
             open_browser=False,
-            cache_path=cache_path
+            cache_path=self.cache_path
         )
         
         self.sp = None
-
-    def is_authenticated(self):
-        try:
-            if self.sp:
-                self.sp.current_user()
-                return True
-        except:
-            pass
-        return False
+        
+        # Ensure cache file is writable if it exists
+        if os.path.exists(self.cache_path):
+            try:
+                os.chmod(self.cache_path, 0o666)  # Make writable by all
+            except Exception as e:
+                print(f"Could not modify cache file permissions: {e}")
 
     def get_auth_url(self):
-        auth_url = self.auth_manager.get_authorize_url()
-        print("\n=== Spotify Authentication Required ===")
-        print(f"\nPlease visit this URL in your browser to authenticate:\n\n{auth_url}\n")
-        print("After authorizing, you will be redirected. Copy the URL you are redirected to.\n")
-        return auth_url
-
-    def wait_for_auth(self):
-        while True:
-            try:
-                print("\nPaste the URL you were redirected to:")
-                redirect_url = input().strip()
-                
-                if 'code=' not in redirect_url:
-                    print("Invalid URL. Please make sure to copy the entire URL after redirection.")
-                    continue
-                
-                code = self.auth_manager.parse_response_code(redirect_url)
-                token_info = self.auth_manager.get_access_token(code)
-                self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
-                print("Authentication successful!")
-                return True
-                
-            except Exception as e:
-                print(f"Error: {e}")
-                print("Please try again.")
+        return self.auth_manager.get_authorize_url()
+        
+    def handle_auth_callback(self, code):
+        """Handle the callback from Spotify auth"""
+        try:
+            token_info = self.auth_manager.get_access_token(code)
+            self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
+            return True
+        except Exception as e:
+            print(f"Auth error: {e}")
+            return False
 
     def get_current_track(self):
+        """Get the currently playing track"""
+        if not self.sp:
+            print("Spotify client not initialized")
+            return None
+        
         try:
-            current = self.sp.current_user_playing_track()
+            current = self.sp.current_playback()
             if current and current.get('item'):
                 return {
+                    'name': current['item']['name'],
+                    'artist': current['item']['artists'][0]['name'],
                     'album_art_url': current['item']['album']['images'][0]['url']
                 }
-            return None
-        except:
-            return None
+        except Exception as e:
+            print(f"Error getting current track: {e}")
+        return None
+
+    def is_authenticated(self):
+        """Check if we have valid Spotify credentials"""
+        try:
+            token_info = self.auth_manager.get_cached_token()
+            if token_info and not self.auth_manager.is_token_expired(token_info):
+                if not self.sp:
+                    self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
+                return True
+            return False
+        except Exception as e:
+            print(f"Auth check error: {e}")
+            return False

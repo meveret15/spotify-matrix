@@ -1,35 +1,28 @@
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix
 from display_manager import DisplayManager
 from spotify_client import SpotifyClient
 from wifi_manager import WifiManager
-from PIL import Image
+from config import get_matrix_options
 import time
-import os
 
 def main():
     # Matrix configuration
-    options = RGBMatrixOptions()
-    options.rows = 64
-    options.cols = 64
-    options.hardware_mapping = 'adafruit-hat'
-    
-    matrix = RGBMatrix(options=options)
+    matrix = RGBMatrix(options=get_matrix_options())
     display = DisplayManager(matrix)
+    display.check_refresh_rate()
     
     # Show welcome screen
     display.show_text("SPOTLIGHT")
     
-    # Initialize Spotify client
+    # Initialize components
     spotify = SpotifyClient()
-    if not spotify.is_authenticated():
-        auth_url = spotify.get_auth_url()
-        display.show_text("Check Terminal\nfor Auth URL")
-        spotify.wait_for_auth()
+    wifi_manager = WifiManager(spotify)
     
-    # Track the last album art URL to prevent unnecessary updates
+    # Main application loop
+    run_display_loop(display, spotify)
+
+def run_display_loop(display, spotify):
     last_art_url = None
-    
-    # Main loop
     while True:
         try:
             current_track = spotify.get_current_track()
