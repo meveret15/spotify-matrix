@@ -1,25 +1,32 @@
-from rgbmatrix import RGBMatrixOptions
+import os
+from platformdirs import user_config_dir
 
+# Application paths
+APP_NAME = "spotify-matrix"
+CONFIG_DIR = user_config_dir(APP_NAME)
+CREDENTIALS_FILE = os.path.join(CONFIG_DIR, "credentials.json")
+LOG_DIR = "/var/log/spotlight"
+
+# Ensure directories exist
+os.makedirs(CONFIG_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Matrix configuration
 def get_matrix_options():
-    """Get standard matrix configuration"""
-    options = RGBMatrixOptions()
-    options.rows = 64
-    options.cols = 64
-    options.chain_length = 1
-    options.parallel = 1
-    options.hardware_mapping = 'adafruit-hat'
-    options.brightness = 70
-    options.gpio_slowdown = 4
-    return options
+    return {
+        "rows": 64,
+        "cols": 64,
+        "chain_length": 1,
+        "parallel": 1,
+        "hardware_mapping": "regular",
+        "gpio_slowdown": 4,
+        "brightness": 70
+    }
 
 # Spotify configuration
-SPOTIPY_CLIENT_ID = 'e41bd5086b4942aaa474ecdb3e443114'
-SPOTIPY_CLIENT_SECRET = '567e3e77940544c9a0d1163fe6c99020'
-REDIRECT_URI = 'http://192.168.1.145:8080/spotify-callback'
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "your_client_id_here")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "your_client_secret_here")
+SPOTIFY_REDIRECT_URI = "http://localhost:8080/callback"
 
-# WiFi configuration
-WIFI_SETUP_SSID = "SpotlightSetup"
-WIFI_SETUP_PASSWORD = "spotlightsetup"
-WIFI_CONFIG_PATH = '/etc/wpa_supplicant/wpa_supplicant.conf'
-HOSTAPD_CONFIG_PATH = '/etc/hostapd/hostapd.conf'
-DNSMASQ_CONFIG_PATH = '/etc/dnsmasq.conf'
+# Network status check
+NETWORK_CHECK_URL = "https://api.spotify.com"  # Used to verify internet connectivity

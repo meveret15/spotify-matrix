@@ -1,14 +1,16 @@
 [Unit]
-Description=Spotlight Setup Service
-After=network.target
+Description=Spotify Matrix Display Service
+After=network.target raspap.service
+Wants=network.target raspap.service
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/home/mever/spotify-matrix
-ExecStart=/usr/bin/python3 /home/mever/spotify-matrix/setup.py
+Environment=PYTHONPATH=/home/mever/spotify-matrix
+ExecStart=/home/mever/spotify-matrix/venv/bin/python main.py
 Restart=always
-RestartSec=5
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target 
