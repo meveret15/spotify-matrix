@@ -1,15 +1,35 @@
 import os
-from platformdirs import user_config_dir
+import netifaces
+
+def get_local_ip():
+    """Get IP address of the Pi on the local network"""
+    # Try common interface names
+    for interface in ['wlan0', 'eth0', 'wlan1', 'eth1']:
+        try:
+            if interface in netifaces.interfaces():
+                addrs = netifaces.ifaddresses(interface)
+                if netifaces.AF_INET in addrs:
+                    # Get the first IPv4 address that's not 127.0.0.1 or 10.*.*.*
+                    for addr in addrs[netifaces.AF_INET]:
+                        ip = addr['addr']
+                        if not (ip.startswith('127.') or ip.startswith('10.')):
+                            return ip
+        except:
+            continue
+    return None
 
 # Application paths
 APP_NAME = "spotify-matrix"
-CONFIG_DIR = user_config_dir(APP_NAME)
-CREDENTIALS_FILE = os.path.join(CONFIG_DIR, "credentials.json")
-LOG_DIR = "/var/log/spotlight"
+APP_AUTHOR = "mever"
 
-# Ensure directories exist
-os.makedirs(CONFIG_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
+# Use local directories instead of system-wide ones
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CACHE_DIR = os.path.join(BASE_DIR, 'cache')
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+
+# Ensure directories exist with proper permissions
+os.makedirs(CACHE_DIR, mode=0o777, exist_ok=True)
+os.makedirs(LOG_DIR, mode=0o777, exist_ok=True)
 
 # Matrix configuration
 def get_matrix_options():
@@ -18,15 +38,17 @@ def get_matrix_options():
         "cols": 64,
         "chain_length": 1,
         "parallel": 1,
-        "hardware_mapping": "regular",
+        "hardware_mapping": "adafruit-hat",
         "gpio_slowdown": 4,
-        "brightness": 70
+        "brightness": 70,
+        "disable_hardware_pulsing": True,
+        "pwm_lsb_nanoseconds": 50
     }
 
 # Spotify configuration
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "your_client_id_here")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "your_client_secret_here")
-SPOTIFY_REDIRECT_URI = "http://localhost:8080/callback"
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "e41bd5086b4942aaa474ecdb3e443114")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "567e3e77940544c9a0d1163fe6c99020")
+SPOTIFY_REDIRECT_URI = f"http://{get_local_ip()}:8080/callback" if get_local_ip() else "http://localhost:8080/callback"
 
 # Network status check
 NETWORK_CHECK_URL = "https://api.spotify.com"  # Used to verify internet connectivity

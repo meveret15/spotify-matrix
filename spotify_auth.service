@@ -1,0 +1,15 @@
+[Unit]
+Description=Spotify Auth Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/mever/spotify-matrix
+Environment=PYTHONPATH=/home/mever/spotify-matrix:/home/mever/spotify-matrix/venv/lib/python3.11/site-packages
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/mever/spotify-matrix/venv/bin/python spotify_auth_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target 

@@ -1,36 +1,36 @@
-import os
-from PIL import Image
+#!/usr/bin/env python3
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
-# Configuration for the matrix
-options = RGBMatrixOptions()
-options.rows = 64
-options.cols = 64
-options.chain_length = 1
-options.parallel = 1
-options.hardware_mapping = 'adafruit-hat'
+def main():
+    # Configuration for the matrix
+    options = RGBMatrixOptions()
+    options.rows = 64
+    options.cols = 64
+    options.chain_length = 1
+    options.parallel = 1
+    options.hardware_mapping = 'adafruit-hat'
+    options.gpio_slowdown = 4
+    options.brightness = 70
+    options.disable_hardware_pulsing = True
+    options.pwm_lsb_nanoseconds = 50
 
-# Optimize for image stability
-options.gpio_slowdown = 4
-options.brightness = 80
-options.pwm_bits = 11
-options.pwm_lsb_nanoseconds = 130
-options.scan_mode = 1
-options.multiplexing = 0
-options.limit_refresh_rate_hz = 120
+    print("Creating matrix...")
+    matrix = RGBMatrix(options=options)
+    print("Matrix created")
 
-matrix = RGBMatrix(options = options)
-
-try:
-    # Test with a bright red color for better visibility
-    image = Image.new('RGB', (64, 64), color = 'red')
-    matrix.SetImage(image)
-    print("Image set to matrix. You should see a red screen.")
+    # Fill the screen with red
+    print("Filling screen with red...")
+    for x in range(64):
+        for y in range(64):
+            matrix.SetPixel(x, y, 255, 0, 0)
     
-    # Keep the script running
-    input("Press Enter to exit...")
+    print("Press CTRL+C to exit")
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print("Exiting...")
+        matrix.Clear()
 
-except Exception as e:
-    print(f"An error occurred: {e}")
-finally:
-    matrix.Clear()  # Clean up
+if __name__ == "__main__":
+    main() 
