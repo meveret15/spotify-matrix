@@ -43,3 +43,5 @@ config.local.py
 # System
 .DS_Store
 Thumbs.db
+
+.cache

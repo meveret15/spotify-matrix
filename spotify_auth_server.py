@@ -6,8 +6,7 @@ import netifaces
 from config import (
     SPOTIFY_CLIENT_ID,
     SPOTIFY_CLIENT_SECRET,
-    SPOTIFY_REDIRECT_URI,
-    CACHE_DIR
+    SPOTIFY_REDIRECT_URI
 )
 
 app = Flask(__name__)
@@ -29,8 +28,7 @@ def index():
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=SPOTIFY_REDIRECT_URI,
         scope='user-read-playback-state user-modify-playback-state',
-        open_browser=False,
-        cache_path=os.path.join(CACHE_DIR, '.spotify-token-cache')
+        open_browser=False
     )
     
     try:
@@ -56,8 +54,7 @@ def callback():
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=SPOTIFY_REDIRECT_URI,
         scope='user-read-playback-state user-modify-playback-state',
-        open_browser=False,
-        cache_path=os.path.join(CACHE_DIR, '.spotify-token-cache')
+        open_browser=False
     )
     
     # Get tokens from Spotify (spotipy will handle caching)

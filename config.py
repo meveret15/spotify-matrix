@@ -39,10 +39,11 @@ def get_matrix_options():
         "chain_length": 1,
         "parallel": 1,
         "hardware_mapping": "adafruit-hat",
-        "gpio_slowdown": 4,
-        "brightness": 70,
-        "disable_hardware_pulsing": True,
-        "pwm_lsb_nanoseconds": 50
+        "gpio_slowdown": 2,
+        "brightness": 50,
+        # Basic settings for stability
+        "pwm_bits": 11,
+        "show_refresh_rate": True
     }
 
 # Spotify configuration
