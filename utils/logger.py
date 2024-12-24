@@ -1,38 +1,34 @@
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 
 def setup_logger(name, log_file, level=logging.DEBUG):
-    """Set up a logger with file and console handlers"""
-    
+    """Set up a rotating logger that limits file size and keeps backup count"""
     # Create logs directory if it doesn't exist
-    log_dir = os.path.dirname(log_file)
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs('logs', exist_ok=True)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Create rotating file handler
+    # Max size of 1MB, keep 3 backup files
+    handler = RotatingFileHandler(
+        os.path.join('logs', log_file),
+        maxBytes=1024*1024,  # 1MB
+        backupCount=3
+    )
+    handler.setFormatter(formatter)
     
     # Create logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
     
-    # Create formatters
-    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Remove existing handlers to avoid duplicates
+    logger.handlers = []
     
-    # File handler
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(level)
-    
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(level)
-    
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    
-    logger.info(f"Logger initialized. Logging to: {os.path.abspath(log_file)}")
-    if level <= logging.DEBUG:
-        logger.debug("Debug logging enabled")
+    # Add the rotating handler
+    logger.addHandler(handler)
     
     return logger

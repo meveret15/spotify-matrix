@@ -45,3 +45,5 @@ config.local.py
 Thumbs.db
 
 .cache
+
+rgb-matrix.sh

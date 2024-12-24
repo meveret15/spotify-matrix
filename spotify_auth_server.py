@@ -6,10 +6,18 @@ import netifaces
 from config import (
     SPOTIFY_CLIENT_ID,
     SPOTIFY_CLIENT_SECRET,
-    SPOTIFY_REDIRECT_URI
+    SPOTIFY_REDIRECT_URI,
+    AUTH_SERVER_PORT
 )
+from utils.logger import setup_logger
 
 app = Flask(__name__)
+logger = setup_logger('auth', 'auth.log')
+
+# Set environment variables for Spotipy
+os.environ['SPOTIPY_CLIENT_ID'] = SPOTIFY_CLIENT_ID
+os.environ['SPOTIPY_CLIENT_SECRET'] = SPOTIFY_CLIENT_SECRET
+os.environ['SPOTIPY_REDIRECT_URI'] = SPOTIFY_REDIRECT_URI
 
 def get_local_ip():
     # Get IP address of the Pi on the local network
@@ -21,54 +29,110 @@ def get_local_ip():
                 return addrs[netifaces.AF_INET][0]['addr']
     return None
 
+def clear_auth():
+    """Clear the Spotify authentication"""
+    try:
+        # Remove the cache file
+        cache_file = '.cache'
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
+            logger.info("Auth cache cleared")
+        return True
+    except Exception as e:
+        logger.error(f"Error clearing auth: {e}")
+        return False
+
 @app.route('/')
 def index():
     auth_manager = SpotifyOAuth(
-        client_id=SPOTIFY_CLIENT_ID,
-        client_secret=SPOTIFY_CLIENT_SECRET,
-        redirect_uri=SPOTIFY_REDIRECT_URI,
         scope='user-read-playback-state user-modify-playback-state',
-        open_browser=False
+        open_browser=False,
+        show_dialog=True  # Always show dialog for account selection
     )
     
     try:
         if auth_manager.validate_token(auth_manager.get_cached_token()):
-            return '<h1>Spotify already authenticated!</h1>'
+            return f'''
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; text-align: center; }}
+                        h1 {{ color: #1DB954; }}
+                        .button {{ display: inline-block; background-color: #1DB954; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; border: none; font-size: 16px; cursor: pointer; margin: 10px; }}
+                        .warning {{ color: #e55; margin: 20px 0; }}
+                    </style>
+                </head>
+                <body>
+                    <h1>SpotifyMatrix Status</h1>
+                    <p>A Spotify account is currently connected and displaying music.</p>
+                    <p>Want to switch to a different account?</p>
+                    <form action="/reauth" method="post">
+                        <button type="submit" class="button">Switch Spotify Account</button>
+                    </form>
+                    <p class="warning">Note: This will disconnect the current account.</p>
+                </body>
+                </html>
+            '''
     except:
         pass
     
     auth_url = auth_manager.get_authorize_url()
     return f'''
-        <h1>Welcome to SpotifyMatrix!</h1>
-        <p>Click the button below to authenticate with Spotify:</p>
-        <a href="{auth_url}" style="display: inline-block; background-color: #1DB954; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
-            Connect Spotify
-        </a>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; text-align: center; }}
+                h1 {{ color: #1DB954; }}
+                .button {{ display: inline-block; background-color: #1DB954; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 20px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Welcome to SpotifyMatrix!</h1>
+            <p>Click the button below to connect your Spotify account:</p>
+            <a href="{auth_url}" class="button">Connect Spotify</a>
+        </body>
+        </html>
     '''
+
+@app.route('/reauth', methods=['POST'])
+def reauth():
+    """Handle reauthorization request"""
+    if clear_auth():
+        return redirect('/')
+    return 'Failed to clear authorization', 500
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
     auth_manager = SpotifyOAuth(
-        client_id=SPOTIFY_CLIENT_ID,
-        client_secret=SPOTIFY_CLIENT_SECRET,
-        redirect_uri=SPOTIFY_REDIRECT_URI,
         scope='user-read-playback-state user-modify-playback-state',
-        open_browser=False
+        open_browser=False,
+        show_dialog=True  # Always show dialog for account selection
     )
     
     # Get tokens from Spotify (spotipy will handle caching)
     auth_manager.get_access_token(code)
     
     return '''
-        <h1>Setup Complete! ✓</h1>
-        <p>Your SpotifyMatrix has been authenticated.</p>
-        <p>You can now close this window and enjoy your music visualization!</p>
-        <script>
-            setTimeout(function() {
-                window.close();
-            }, 5000);
-        </script>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; text-align: center; }
+                h1 { color: #1DB954; }
+            </style>
+        </head>
+        <body>
+            <h1>Setup Complete! ✓</h1>
+            <p>Your SpotifyMatrix has been authenticated.</p>
+            <p>You can now close this window and enjoy your music visualization!</p>
+            <p>To switch accounts later, just visit this page again.</p>
+            <script>
+                setTimeout(function() {
+                    window.close();
+                }, 5000);
+            </script>
+        </body>
+        </html>
     '''
 
 if __name__ == '__main__':
@@ -76,6 +140,6 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print(f"SpotifyMatrix Auth Server Running!")
     print(f"To authenticate Spotify, visit:")
-    print(f"http://{ip_address}:8080")
+    print(f"http://{ip_address}:{AUTH_SERVER_PORT}")
     print("="*50 + "\n")
-    app.run(host='0.0.0.0', port=8080) 
+    app.run(host='0.0.0.0', port=AUTH_SERVER_PORT) 

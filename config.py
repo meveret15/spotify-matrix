@@ -1,21 +1,44 @@
 import os
+import socket
 import netifaces
 
 def get_local_ip():
-    """Get IP address of the Pi on the local network"""
-    # Try common interface names
-    for interface in ['wlan0', 'eth0', 'wlan1', 'eth1']:
+    """Get IP address of the Pi on the local network (192.168.*)"""
+    # First try the wlan0 interface
+    try:
+        addrs = netifaces.ifaddresses('wlan0')
+        if netifaces.AF_INET in addrs:
+            for addr in addrs[netifaces.AF_INET]:
+                ip = addr['addr']
+                if ip.startswith('192.168.'):
+                    return ip
+    except:
+        pass
+
+    # If not found, try all interfaces
+    for interface in netifaces.interfaces():
         try:
-            if interface in netifaces.interfaces():
-                addrs = netifaces.ifaddresses(interface)
-                if netifaces.AF_INET in addrs:
-                    # Get the first IPv4 address that's not 127.0.0.1 or 10.*.*.*
-                    for addr in addrs[netifaces.AF_INET]:
-                        ip = addr['addr']
-                        if not (ip.startswith('127.') or ip.startswith('10.')):
-                            return ip
+            addrs = netifaces.ifaddresses(interface)
+            if netifaces.AF_INET in addrs:
+                for addr in addrs[netifaces.AF_INET]:
+                    ip = addr['addr']
+                    if ip.startswith('192.168.'):
+                        return ip
         except:
             continue
+
+    # If no 192.168.* address found, try any non-localhost address
+    for interface in netifaces.interfaces():
+        try:
+            addrs = netifaces.ifaddresses(interface)
+            if netifaces.AF_INET in addrs:
+                for addr in addrs[netifaces.AF_INET]:
+                    ip = addr['addr']
+                    if not ip.startswith('127.'):
+                        return ip
+        except:
+            continue
+
     return None
 
 # Application paths
@@ -31,25 +54,22 @@ LOG_DIR = os.path.join(BASE_DIR, 'logs')
 os.makedirs(CACHE_DIR, mode=0o777, exist_ok=True)
 os.makedirs(LOG_DIR, mode=0o777, exist_ok=True)
 
+# Server configuration
+AUTH_SERVER_PORT = 8080
+
 # Matrix configuration
 def get_matrix_options():
     return {
         "rows": 64,
         "cols": 64,
-        "chain_length": 1,
-        "parallel": 1,
-        "hardware_mapping": "adafruit-hat",
-        "gpio_slowdown": 2,
-        "brightness": 50,
-        # Basic settings for stability
-        "pwm_bits": 11,
-        "show_refresh_rate": True
+        "hardware_mapping": "adafruit-hat-pwm",
+        "brightness": 70,
     }
 
 # Spotify configuration
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "e41bd5086b4942aaa474ecdb3e443114")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "567e3e77940544c9a0d1163fe6c99020")
-SPOTIFY_REDIRECT_URI = f"http://{get_local_ip()}:8080/callback" if get_local_ip() else "http://localhost:8080/callback"
+SPOTIFY_REDIRECT_URI = f"http://{get_local_ip()}:{AUTH_SERVER_PORT}/callback" if get_local_ip() else f"http://localhost:{AUTH_SERVER_PORT}/callback"
 
 # Network status check
 NETWORK_CHECK_URL = "https://api.spotify.com"  # Used to verify internet connectivity

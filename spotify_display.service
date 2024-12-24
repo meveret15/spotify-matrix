@@ -5,13 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
+User=mever
 WorkingDirectory=/home/mever/spotify-matrix
 Environment=PYTHONPATH=/home/mever/spotify-matrix:/home/mever/spotify-matrix/rpi-rgb-led-matrix/bindings/python:/home/mever/spotify-matrix/venv/lib/python3.11/site-packages
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/mever/spotify-matrix/venv/bin/python spotify_display_main.py
+Environment=HOME=/home/mever
+ExecStart=/usr/bin/sudo -E /home/mever/spotify-matrix/venv/bin/python spotify_display_main.py
 Restart=always
-RestartSec=10
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target 

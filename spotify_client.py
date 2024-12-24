@@ -22,7 +22,7 @@ class SpotifyClient:
         os.environ['SPOTIPY_CLIENT_SECRET'] = SPOTIFY_CLIENT_SECRET
         os.environ['SPOTIPY_REDIRECT_URI'] = SPOTIFY_REDIRECT_URI
         
-        # Use default .cache location
+        # Use spotipy's default .cache location
         self.auth_manager = SpotifyOAuth(
             scope='user-read-playback-state user-modify-playback-state',
             open_browser=False,
