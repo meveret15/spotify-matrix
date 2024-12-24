@@ -3,15 +3,20 @@ import os
 import time
 import signal
 import sys
+from utils.logger import setup_logger
+
+# Set up logging first
+logger = setup_logger('main', 'main.log')
+logger.info("Starting spotify_display_main.py")
+
 from display_manager import DisplayManager
 from spotify_client import SpotifyClient
-from utils.logger import setup_logger
 from utils.network import wait_for_network
 from config import AUTH_SERVER_PORT, get_local_ip
 from spotipy.oauth2 import SpotifyOAuth
 from config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI
 
-logger = setup_logger('main', 'logs/main.log')
+logger = setup_logger('main', 'main.log')
 
 def check_auth_token():
     """Check if the auth token exists and is valid"""

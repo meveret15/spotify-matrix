@@ -26,7 +26,10 @@ def get_local_ip():
         if interface.startswith('w'):  # wifi interface
             addrs = netifaces.ifaddresses(interface)
             if netifaces.AF_INET in addrs:
-                return addrs[netifaces.AF_INET][0]['addr']
+                ip = addrs[netifaces.AF_INET][0]['addr']
+                logger.info(f"Found local IP: {ip}")
+                return ip
+    logger.warning("Could not find local IP address")
     return None
 
 def clear_auth():
@@ -44,6 +47,7 @@ def clear_auth():
 
 @app.route('/')
 def index():
+    logger.info("Index page accessed")
     auth_manager = SpotifyOAuth(
         scope='user-read-playback-state user-modify-playback-state',
         open_browser=False,
@@ -52,6 +56,7 @@ def index():
     
     try:
         if auth_manager.validate_token(auth_manager.get_cached_token()):
+            logger.info("Valid token found, showing status page")
             return f'''
                 <html>
                 <head>
@@ -103,6 +108,7 @@ def reauth():
 
 @app.route('/callback')
 def callback():
+    logger.info("Callback received from Spotify")
     code = request.args.get('code')
     auth_manager = SpotifyOAuth(
         scope='user-read-playback-state user-modify-playback-state',
@@ -110,8 +116,13 @@ def callback():
         show_dialog=True  # Always show dialog for account selection
     )
     
-    # Get tokens from Spotify (spotipy will handle caching)
-    auth_manager.get_access_token(code)
+    try:
+        # Get tokens from Spotify (spotipy will handle caching)
+        auth_manager.get_access_token(code)
+        logger.info("Successfully obtained access token")
+    except Exception as e:
+        logger.error(f"Error getting access token: {e}")
+        return "Failed to authenticate with Spotify", 500
     
     return '''
         <html>
@@ -137,6 +148,7 @@ def callback():
 
 if __name__ == '__main__':
     ip_address = get_local_ip()
+    logger.info(f"Starting auth server on {ip_address}:{AUTH_SERVER_PORT}")
     print("\n" + "="*50)
     print(f"SpotifyMatrix Auth Server Running!")
     print(f"To authenticate Spotify, visit:")

@@ -88,15 +88,27 @@ sudo bash rgb-matrix.sh
 # 2. Select "Yes" to update the sysclock
 # 3. Choose "Yes" to activate realtime permissions
 # 4. Reboot when prompted
-```
 
-After reboot, SSH back in and reactivate the virtual environment:
-```bash
+# After reboot, SSH back in and complete the Python bindings installation
 cd ~/spotify-matrix
 source venv/bin/activate
+cd rpi-rgb-led-matrix/bindings/python
+pip install .
 ```
 
-### 5. Configure Services
+### 5. Set Up Logging
+```bash
+# Create logs directory and required log files
+cd ~/spotify-matrix
+mkdir -p logs
+touch logs/auth.log logs/display.log logs/spotify.log logs/main.log
+
+# Set correct permissions (allowing both user and root to write)
+sudo chown -R mever:mever logs
+chmod 666 logs/*.log
+```
+
+### 6. Configure Services
 ```bash
 # Copy service files
 sudo cp spotify_auth.service /etc/systemd/system/
@@ -139,9 +151,10 @@ sudo systemctl status spotify_auth.service
 sudo systemctl status spotify_display.service
 
 # View logs
-tail -f logs/display.log
-tail -f logs/auth.log
-tail -f logs/spotify.log
+tail -f logs/display.log  # Display service logs
+tail -f logs/auth.log    # Auth service logs
+tail -f logs/main.log    # Main application logs
+tail -f logs/spotify.log # Spotify API logs
 ```
 
 #### Common Issues
@@ -152,6 +165,34 @@ tail -f logs/spotify.log
   - Ensure quality power supply (5V 4A minimum)
   - Verify PWM and clock speed mods are properly soldered
   - Check HAT is firmly seated on GPIO pins
+  - Add `isolcpus=3` to `/boot/cmdline.txt` for better performance
+- **Sound Module Conflict**:
+  - If you see "snd_bcm2835" error, disable the built-in audio by following both steps:
+    1. Create/edit the blacklist file:
+       ```bash
+       sudo nano /etc/modprobe.d/raspi-blacklist.conf
+       ```
+       Add this line:
+       ```
+       blacklist snd_bcm2835
+       ```
+    2. Edit `/boot/config.txt`:
+       ```bash
+       sudo nano /boot/config.txt
+       ```
+       Add or modify this line:
+       ```
+       dtparam=audio=off
+       ```
+    3. Save both files and reboot:
+       ```bash
+       sudo reboot
+       ```
+  - Alternatively, run with `--led-no-hardware-pulse` flag (may cause more flicker)
+- **Service Fails to Start**:
+  - Check log files in `logs/` directory
+  - Ensure all log files exist and have correct permissions (666)
+  - Verify RGB Matrix library is properly installed in Python bindings
 
 ## Technical Details
 
@@ -184,12 +225,13 @@ spotify-matrix/
 
 ### Log Management
 - Automatic log rotation for all log files:
+  - `main.log`: Main application events
   - `display.log`: Matrix display operations
   - `auth.log`: Authentication server events
   - `spotify.log`: Spotify API interactions
-  - `network.log`: Network connectivity
 - Each log limited to 1MB with 3 backups
-- Old logs automatically deleted
+- Log files must be created with correct permissions before starting services
+- All logs stored in `logs/` directory
 
 ## Future Improvements
 - Automated WiFi setup interface for fully headless operation
